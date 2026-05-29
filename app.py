@@ -1,36 +1,65 @@
 from flask import Flask, render_template, request, jsonify
-import sqlite3
+import pymysql
 import uuid
 from datetime import datetime
 
 app = Flask(__name__)
-DATABASE = 'tasks.db'
+
+# MySQL数据库配置
+app.config['MYSQL_HOST'] = 'localhost'
+app.config['MYSQL_USER'] = 'root'
+app.config['MYSQL_PASSWORD'] = 'Aw123456'
+app.config['MYSQL_DB'] = 'meeting_task_db'
 
 def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
+    conn = pymysql.connect(
+        host=app.config['MYSQL_HOST'],
+        user=app.config['MYSQL_USER'],
+        password=app.config['MYSQL_PASSWORD'],
+        database=app.config['MYSQL_DB'],
+        cursorclass=pymysql.cursors.DictCursor
+    )
     return conn
 
 def init_db():
     conn = get_db()
-    with app.open_resource('schema.sql', mode='r') as f:
-        conn.cursor().executescript(f.read())
-    conn.commit()
-    conn.close()
+    try:
+        cur = conn.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS tasks (
+                task_id VARCHAR(36) PRIMARY KEY,
+                meeting_id VARCHAR(50) NOT NULL,
+                start_time DATETIME NOT NULL,
+                end_time DATETIME NOT NULL,
+                max_participants INT NOT NULL DEFAULT 0,
+                current_participants INT NOT NULL DEFAULT 0,
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+        conn.commit()
+    finally:
+        conn.close()
 
 def query_db(query, args=(), one=False):
     conn = get_db()
-    cur = conn.execute(query, args)
-    rv = cur.fetchall()
-    conn.close()
-    return (rv[0] if rv else None) if one else rv
+    try:
+        cur = conn.cursor()
+        cur.execute(query, args)
+        rv = cur.fetchall()
+        return (rv[0] if rv else None) if one else rv
+    finally:
+        conn.close()
 
 def execute_db(query, args=()):
     conn = get_db()
-    cur = conn.execute(query, args)
-    conn.commit()
-    conn.close()
-    return cur.lastrowid
+    try:
+        cur = conn.cursor()
+        cur.execute(query, args)
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
 
 @app.route('/')
 def index():
@@ -75,7 +104,7 @@ def create_task():
             return jsonify({'code': 500, 'msg': '会议结束时间必须晚于开始时间', 'data': {}})
         
         task_id = str(uuid.uuid4())
-        execute_db('INSERT INTO tasks (task_id, meeting_id, start_time, end_time, max_participants, current_participants, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        execute_db('INSERT INTO tasks (task_id, meeting_id, start_time, end_time, max_participants, current_participants, status) VALUES (%s, %s, %s, %s, %s, %s, %s)',
                    (task_id, meeting_id, start_dt.strftime('%Y-%m-%d %H:%M:%S'), end_dt.strftime('%Y-%m-%d %H:%M:%S'), max_participants, 0, 'pending'))
         
         return jsonify({'code': 200, 'msg': '任务创建成功', 'data': {'task_id': task_id}})
@@ -85,18 +114,18 @@ def create_task():
 @app.route('/api/get_tasks', methods=['GET'])
 def get_tasks():
     try:
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        tasks = query_db('SELECT * FROM tasks WHERE end_time > ? ORDER BY created_at DESC', (current_time,))
+        current_time = datetime.now()
+        tasks = query_db('SELECT * FROM tasks WHERE end_time > %s ORDER BY created_at DESC', (current_time,))
         
         result = []
         for task in tasks:
-            end_dt = datetime.strptime(task['end_time'], '%Y-%m-%d %H:%M:%S')
-            start_dt = datetime.strptime(task['start_time'], '%Y-%m-%d %H:%M:%S')
+            end_dt = task['end_time']
+            start_dt = task['start_time']
             
             status = task['status']
-            if current_time > task['end_time']:
+            if current_time > end_dt:
                 status = 'ended'
-            elif current_time >= task['start_time'] and current_time < task['end_time']:
+            elif current_time >= start_dt and current_time < end_dt:
                 status = 'in_progress'
             else:
                 status = 'pending'
@@ -104,8 +133,8 @@ def get_tasks():
             result.append({
                 'task_id': task['task_id'],
                 'meeting_id': task['meeting_id'],
-                'start_time': task['start_time'],
-                'end_time': task['end_time'],
+                'start_time': start_dt.strftime('%Y-%m-%d %H:%M:%S'),
+                'end_time': end_dt.strftime('%Y-%m-%d %H:%M:%S'),
                 'max_participants': task['max_participants'],
                 'current_participants': task['current_participants'],
                 'remaining': task['max_participants'] - task['current_participants'],
@@ -125,12 +154,12 @@ def delete_task():
         if not task_id:
             return jsonify({'code': 500, 'msg': '任务ID不能为空', 'data': {}})
         
-        task = query_db('SELECT * FROM tasks WHERE task_id = ?', (task_id,), one=True)
+        task = query_db('SELECT * FROM tasks WHERE task_id = %s', (task_id,), one=True)
         
         if not task:
             return jsonify({'code': 500, 'msg': '任务不存在', 'data': {}})
         
-        execute_db('DELETE FROM tasks WHERE task_id = ?', (task_id,))
+        execute_db('DELETE FROM tasks WHERE task_id = %s', (task_id,))
         
         return jsonify({'code': 200, 'msg': '删除成功', 'data': {}})
     except Exception as e:
@@ -139,15 +168,15 @@ def delete_task():
 @app.route('/api/getMeetingTask', methods=['GET', 'POST'])
 def get_meeting_task():
     try:
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        tasks = query_db('SELECT * FROM tasks WHERE end_time > ? AND current_participants < max_participants ORDER BY start_time ASC, created_at ASC', (current_time,))
+        current_time = datetime.now()
+        tasks = query_db('SELECT * FROM tasks WHERE end_time > %s AND current_participants < max_participants ORDER BY start_time ASC, created_at ASC', (current_time,))
         
         if not tasks:
             return jsonify({'code': 500, 'msg': '无可用挂机任务', 'data': {}})
         
         task = tasks[0]
-        start_dt = datetime.strptime(task['start_time'], '%Y-%m-%d %H:%M:%S')
-        end_dt = datetime.strptime(task['end_time'], '%Y-%m-%d %H:%M:%S')
+        start_dt = task['start_time']
+        end_dt = task['end_time']
         
         return jsonify({
             'code': 200,
@@ -171,8 +200,8 @@ def confirm_meeting_task():
         if not task_id:
             return jsonify({'code': 500, 'msg': '任务ID不能为空', 'data': {}})
         
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        task = query_db('SELECT * FROM tasks WHERE task_id = ?', (task_id,), one=True)
+        current_time = datetime.now()
+        task = query_db('SELECT * FROM tasks WHERE task_id = %s', (task_id,), one=True)
         
         if not task:
             return jsonify({'code': 500, 'msg': '任务不存在', 'data': {}})
@@ -183,9 +212,9 @@ def confirm_meeting_task():
         if task['current_participants'] >= task['max_participants']:
             return jsonify({'code': 500, 'msg': '任务已满', 'data': {}})
         
-        execute_db('UPDATE tasks SET current_participants = current_participants + 1 WHERE task_id = ?', (task_id,))
+        execute_db('UPDATE tasks SET current_participants = current_participants + 1 WHERE task_id = %s', (task_id,))
         
-        updated_task = query_db('SELECT * FROM tasks WHERE task_id = ?', (task_id,), one=True)
+        updated_task = query_db('SELECT * FROM tasks WHERE task_id = %s', (task_id,), one=True)
         return jsonify({
             'code': 200,
             'msg': '确认成功',
@@ -206,7 +235,7 @@ def quit_meeting_task():
         if not task_id:
             return jsonify({'code': 500, 'msg': '任务ID不能为空', 'data': {}})
         
-        task = query_db('SELECT * FROM tasks WHERE task_id = ?', (task_id,), one=True)
+        task = query_db('SELECT * FROM tasks WHERE task_id = %s', (task_id,), one=True)
         
         if not task:
             return jsonify({'code': 500, 'msg': '任务不存在', 'data': {}})
@@ -214,9 +243,9 @@ def quit_meeting_task():
         if task['current_participants'] <= 0:
             return jsonify({'code': 500, 'msg': '已挂机人数不能小于0', 'data': {}})
         
-        execute_db('UPDATE tasks SET current_participants = current_participants - 1 WHERE task_id = ?', (task_id,))
+        execute_db('UPDATE tasks SET current_participants = current_participants - 1 WHERE task_id = %s', (task_id,))
         
-        updated_task = query_db('SELECT * FROM tasks WHERE task_id = ?', (task_id,), one=True)
+        updated_task = query_db('SELECT * FROM tasks WHERE task_id = %s', (task_id,), one=True)
         return jsonify({
             'code': 200,
             'msg': '退出成功',

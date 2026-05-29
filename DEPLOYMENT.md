@@ -38,7 +38,48 @@ sudo chown -R admin:admin /opt/meeting-task-manager
 cd /opt/meeting-task-manager
 ```
 
-### 步骤4：创建Python虚拟环境
+### 步骤4：安装MySQL数据库
+
+```bash
+# 安装MySQL服务器
+sudo dnf install -y mysql-server
+
+# 启动MySQL服务
+sudo systemctl start mysqld
+
+# 设置开机自启
+sudo systemctl enable mysqld
+
+# 查看MySQL状态
+sudo systemctl status mysqld
+
+# 初始化MySQL（设置root密码）
+sudo mysql_secure_installation
+```
+
+创建数据库和用户：
+
+```bash
+# 登录MySQL
+mysql -u root -p
+
+# 创建数据库
+CREATE DATABASE meeting_task_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+# 创建用户
+CREATE USER 'meeting_user'@'localhost' IDENTIFIED BY 'your_secure_password';
+
+# 授权
+GRANT ALL PRIVILEGES ON meeting_task_db.* TO 'meeting_user'@'localhost';
+
+# 刷新权限
+FLUSH PRIVILEGES;
+
+# 退出
+EXIT;
+```
+
+### 步骤5：创建Python虚拟环境
 
 ```bash
 # 创建虚拟环境
@@ -51,7 +92,7 @@ source venv/bin/activate
 pip install flask gunicorn
 ```
 
-### 步骤5：上传项目文件
+### 步骤6：上传项目文件
 
 #### 方法A：使用Git（推荐）
 
@@ -81,24 +122,37 @@ mkdir -p templates
 # 创建app.py文件（复制本地内容）
 nano app.py
 
-# 创建schema.sql文件
-nano schema.sql
-
 # 创建前端页面
 nano templates/index.html
 ```
 
-### 步骤6：初始化数据库
+### 步骤7：修改数据库配置
+
+```bash
+# 编辑app.py配置MySQL连接信息
+nano /opt/meeting-task-manager/app.py
+
+# 修改以下配置（第9-12行）：
+# MYSQL_HOST = 'localhost'
+# MYSQL_USER = 'meeting_user'
+# MYSQL_PASSWORD = 'your_secure_password'  # 设置为您创建数据库时的密码
+# MYSQL_DB = 'meeting_task_db'
+```
+
+### 步骤8：初始化数据库
 
 ```bash
 # 确保在项目目录
 cd /opt/meeting-task-manager
 
-# 初始化数据库（首次运行app.py会自动创建）
+# 安装MySQL驱动
+pip install pymysql
+
+# 初始化数据库（首次运行app.py会自动创建表）
 python app.py
 ```
 
-### 步骤7：启动服务（测试模式）
+### 步骤9：启动服务（测试模式）
 
 ```bash
 # 激活虚拟环境
@@ -111,7 +165,7 @@ python app.py
 # http://47.85.214.74:8080
 ```
 
-### 步骤8：启动服务（生产模式）
+### 步骤10：启动服务（生产模式）
 
 ```bash
 # 使用Gunicorn启动
@@ -124,7 +178,7 @@ nohup gunicorn -w 4 -b 0.0.0.0:8080 app:app > app.log 2>&1 &
 tail -f app.log
 ```
 
-### 步骤9：配置Nginx（可选但推荐）
+### 步骤11：配置Nginx（可选但推荐）
 
 ```bash
 # 创建Nginx配置文件
