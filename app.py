@@ -932,6 +932,9 @@ def server_publish_task():
         if not need_num:
             return jsonify({'code': 400, 'msg': '参数错误', 'data': {}})
         
+        # ★ 需求1：去除会议号中的"-"字符，支持格式如 "896-982-837"
+        meeting_code = meeting_code.replace('-', '')
+        
         try:
             start_ts = int(start_time)
             end_ts = int(end_time)
@@ -1000,6 +1003,13 @@ def server_cancel_task():
         meeting_task = query_db('SELECT * FROM meeting_tasks WHERE meeting_task_id = %s', (meeting_task_id,), one=True)
         if not meeting_task:
             return jsonify({'code': 400, 'msg': '参数错误', 'data': {}})
+        
+        # ★ 需求2：检查会议是否已结束，已过结束时间的任务不能取消
+        current_time = datetime.now()
+        end_time = meeting_task['end_time']
+        if current_time > end_time:
+            logger.warning(f"[会议取消] 会议任务{meeting_task_id}({meeting_task['meeting_code']})已结束（结束时间：{end_time}），无法取消")
+            return jsonify({'code': 400, 'msg': '会议已结束，无法取消', 'data': {}})
         
         # 获取关联的挂机任务
         hangup_tasks = query_db('SELECT hangup_task_id FROM hangup_tasks WHERE meeting_task_id = %s', (meeting_task_id,))
@@ -1259,11 +1269,11 @@ def heartbeat_timeout_check():
             cur = conn.cursor()
             
             # 使用时间戳差值直接判断超时，而非依赖计数器
-            # 查询运行中且心跳超过45秒未更新的设备
+            # 查询运行中且心跳超过120秒未更新的设备（增加容错时间，适应USB连接等不稳定场景）
             cur.execute('''
                 SELECT device_id 
                 FROM devices 
-                WHERE status = %s AND TIMESTAMPDIFF(SECOND, last_heartbeat, NOW()) > 45
+                WHERE status = %s AND TIMESTAMPDIFF(SECOND, last_heartbeat, NOW()) > 120
             ''', ('running',))
             offline_devices = cur.fetchall()
             
