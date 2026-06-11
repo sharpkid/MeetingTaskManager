@@ -1,0 +1,8 @@
+# Flask Web Framework
+Flask>=2.0.0
+
+# MySQL Database Driver
+PyMySQL>=1.0.0
+
+# Production WSGI Server (optional, for production deployment)
+gunicorn>=20.0.0
