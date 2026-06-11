@@ -419,6 +419,19 @@
                     
                     data.data.forEach(task => {
                         const row = document.createElement('tr');
+                        
+                        // ★ 需求2：检查会议是否已过期，已过期的不显示取消按钮
+                        const now = new Date();
+                        const endTime = new Date(task.end_time.replace(/-/g, '/'));
+                        const isExpired = now > endTime;
+                        
+                        let cancelButtonHtml = '';
+                        if (!isExpired) {
+                            cancelButtonHtml = `<button class="btn btn-cancel" onclick="cancelTask('${task.meeting_task_id}')">取消任务</button>`;
+                        } else {
+                            cancelButtonHtml = '<span style="color: #999; font-size: 12px;">已结束</span>';
+                        }
+                        
                         row.innerHTML = `
                             <td>${task.meeting_task_id.substring(0, 8)}...</td>
                             <td>${task.meeting_code}</td>
@@ -437,7 +450,7 @@
                                     <div>已完成: ${task.completed}</div>
                                 </div>
                             </td>
-                            <td><button class="btn btn-cancel" onclick="cancelTask('${task.meeting_task_id}')">取消任务</button></td>
+                            <td>${cancelButtonHtml}</td>
                         `;
                         tbody.appendChild(row);
                     });
