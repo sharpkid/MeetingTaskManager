@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>腾讯会议挂机任务管理系统 - 接口文档</title>
+    <style>
+        body { font-family: "Microsoft YaHei", "SimHei", sans-serif; line-height: 1.6; }
+        h1 { color: #1a73e8; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; }
+        h2 { color: #333; background: #f5f5f5; padding: 8px 12px; border-left: 4px solid #1a73e8; }
+        h3 { color: #555; margin-top: 20px; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+        th { background: #f5f5f5; font-weight: bold; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto; }
+        code { font-family: "Consolas", "Monaco", monospace; }
+        .api-url { color: #1a73e8; font-weight: bold; }
+        .required { color: #d93026; }
+        .response-example { background: #f8f9fa; padding: 15px; border-radius: 4px; border-left: 4px solid #34a853; }
+        .status-table { width: auto; }
+        .status-table td { padding: 5px 10px; }
+    </style>
+</head>
+<body>
+    <h1>腾讯会议挂机任务管理系统 - 接口文档</h1>
+    
+    <h2>一、概述</h2>
+    <p>本系统采用<strong>会议任务</strong>与<strong>挂机任务</strong>分离的设计模式：</p>
+    <ul>
+        <li><strong>会议任务</strong>：代表一个腾讯会议，包含会议号、密码、时间等信息</li>
+        <li><strong>挂机任务</strong>：对应会议的一个挂机名额，移动端认领和执行的对象</li>
+    </ul>
+
+    <h2>二、客户端接口（移动端使用）</h2>
+
+    <h3>1. 设备注册</h3>
+    <p><span class="api-url">POST /api/client/register</span></p>
+    <p><strong>功能</strong>：设备首次注册</p>
+    
+    <h4>请求参数（form-data）</h4>
+    <table>
+        <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+        <tr><td>device_id</td><td>string</td><td><span class="required">是</span></td><td>设备唯一标识（建议使用UUID或IMEI）</td></tr>
+        <tr><td>device_model</td><td>string</td><td><span class="required">是</span></td><td>设备型号（如 iPhone 15 Pro）</td></tr>
+        <tr><td>system_version</td><td>string</td><td><span class="required">是</span></td><td>系统版本（如 iOS 17.0）</td></tr>
+        <tr><td>has_tencent_meeting</td><td>int</td><td><span class="required">是</span></td><td>是否安装腾讯会议（1=是，0=否）</td></tr>
+    </table>
+
+    <h4>响应示例</h4>
+    <div class="response-example">
+        <pre>{
+    "code": 200,
+    "msg": "操作成功",
+    "data": {
+        "is_success": true,
+        "device_status": "free"
+    }
+}</pre>
+    </div>
+
+    <h3>2. 获取可领取任务列表</h3>
+    <p><span class="api-url">GET /api/client/task/list</span></p>
+    <p><strong>功能</strong>：获取可领取的挂机任务列表</p>
+    
+    <h4>请求参数（URL参数）</h4>
+    <table>
+        <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+        <tr><td>device_id</td><td>string</td><td><span class="required">是</span></td><td>设备ID</td></tr>
+    </table>
+
+    <h4>响应示例</h4>
+    <div class="response-example">
+        <pre>{
+    "code": 200,
+    "msg": "操作成功",
+    "data": {
+        "task_list": [
+            {
+                "hangup_task_id": "3865d297-6e77-4a12-aa8d-7e88a2f18773",
+                "meeting_task_id": "339c78ca-f831-4d64-933a-48b5ffae82ec",
+                "meeting_code": "123456789",
+                "meeting_pwd": "123456",
+                "start_time": "2026-06-08 14:00:00",
+                "end_time": "2026-06-08 15:00:00",
+                "priority": 1
+            }
+        ]
+    }
+}</pre>
+    </div>
+
+    <h3>3. 领取挂机任务</h3>
+    <p><span class="api-url">POST /api/client/task/receive</span></p>
+    <p><strong>功能</strong>：领取一个挂机任务</p>
+    
+    <h4>请求参数（form-data）</h4>
+    <table>
+        <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+        <tr><td>device_id</td><td>string</td><td><span class="required">是</span></td><td>设备ID</td></tr>
+        <tr><td>hangup_task_id</td><td>string</td><td><span class="required">是</span></td><td>挂机任务ID</td></tr>
+    </table>
+
+    <h4>响应示例（成功）</h4>
+    <div class="response-example">
+        <pre>{
+    "code": 200,
+    "msg": "操作成功",
+    "data": {
+        "is_receive_success": true,
+        "fail_reason": "",
+        "task_detail": {
+            "hangup_task_id": "3865d297-6e77-4a12-aa8d-7e88a2f18773",
+            "meeting_task_id": "339c78ca-f831-4d64-933a-48b5ffae82ec",
+            "meeting_code": "123456789",
+            "meeting_pwd": "123456",
+            "start_time": "2026-06-08 14:00:00",
+            "end_time": "2026-06-08 15:00:00"
+        }
+    }
+}</pre>
+    </div>
+
+    <h3>4. 心跳上报</h3>
+    <p><span class="api-url">POST /api/client/heartbeat</span></p>
+    <p><strong>功能</strong>：定时上报设备状态（建议每15秒一次）</p>
+    
+    <h4>请求参数（form-data）</h4>
+    <table>
+        <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+        <tr><td>device_id</td><td>string</td><td><span class="required">是</span></td><td>设备ID</td></tr>
+        <tr><td>device_status</td><td>string</td><td><span class="required">是</span></td><td>设备状态（free/running）</td></tr>
+        <tr><td>current_task_id</td><td>string</td><td>否</td><td>当前执行的挂机任务ID</td></tr>
+        <tr><td>in_meeting</td><td>string</td><td>否</td><td>是否在会议中（true/false）</td></tr>
+        <tr><td>network_status</td><td>string</td><td>否</td><td>网络状态（normal/weak/offline）</td></tr>
+    </table>
+
+    <h3>5. 会议状态上报</h3>
+    <p><span class="api-url">POST /api/client/task/report-status</span></p>
+    <p><strong>功能</strong>：上报入会结果</p>
+    
+    <h4>请求参数（form-data）</h4>
+    <table>
+        <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+        <tr><td>device_id</td><td>string</td><td><span class="required">是</span></td><td>设备ID</td></tr>
+        <tr><td>hangup_task_id</td><td>string</td><td><span class="required">是</span></td><td>挂机任务ID</td></tr>
+        <tr><td>in_meeting</td><td>string</td><td><span class="required">是</span></td><td>是否入会成功（true/false）</td></tr>
+        <tr><td>status_msg</td><td>string</td><td>否</td><td>状态描述</td></tr>
+    </table>
+
+    <h3>6. 完成挂机任务</h3>
+    <p><span class="api-url">POST /api/client/task/complete</span></p>
+    <p><strong>功能</strong>：完成挂机任务</p>
+    
+    <h4>请求参数（form-data）</h4>
+    <table>
+        <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+        <tr><td>device_id</td><td>string</td><td><span class="required">是</span></td><td>设备ID</td></tr>
+        <tr><td>hangup_task_id</td><td>string</td><td><span class="required">是</span></td><td>挂机任务ID</td></tr>
+    </table>
+
+    <h3>7. 异常退出</h3>
+    <p><span class="api-url">POST /api/client/task/error-exit</span></p>
+    <p><strong>功能</strong>：异常退出挂机任务（任务回收，允许其他设备领取）</p>
+    
+    <h4>请求参数（form-data）</h4>
+    <table>
+        <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+        <tr><td>device_id</td><td>string</td><td><span class="required">是</span></td><td>设备ID</td></tr>
+        <tr><td>hangup_task_id</td><td>string</td><td><span class="required">是</span></td><td>挂机任务ID</td></tr>
+        <tr><td>error_msg</td><td>string</td><td><span class="required">是</span></td><td>错误描述</td></tr>
+    </table>
+
+    <h2>三、管理端接口</h2>
+
+    <h3>1. 发布会议任务</h3>
+    <p><span class="api-url">POST /api/server/task/publish</span></p>
+    <p><strong>功能</strong>：发布会议任务，自动创建对应数量的挂机任务</p>
+    
+    <h4>请求参数（form-data）</h4>
+    <table>
+        <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+        <tr><td>meeting_code</td><td>string</td><td><span class="required">是</span></td><td>腾讯会议号</td></tr>
+        <tr><td>meeting_pwd</td><td>string</td><td>否</td><td>会议密码</td></tr>
+        <tr><td>start_time</td><td>int</td><td><span class="required">是</span></td><td>开始时间戳（秒）</td></tr>
+        <tr><td>end_time</td><td>int</td><td><span class="required">是</span></td><td>结束时间戳（秒）</td></tr>
+        <tr><td>need_num</td><td>int</td><td><span class="required">是</span></td><td>需要挂机人数</td></tr>
+        <tr><td>priority</td><td>int</td><td>否</td><td>优先级（默认1）</td></tr>
+        <tr><td>remark</td><td>string</td><td>否</td><td>备注</td></tr>
+    </table>
+
+    <h3>2. 取消会议任务</h3>
+    <p><span class="api-url">POST /api/server/task/cancel</span></p>
+    <p><strong>功能</strong>：取消会议任务（所有关联挂机任务一并取消）</p>
+    
+    <h4>请求参数（form-data）</h4>
+    <table>
+        <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+        <tr><td>meeting_task_id</td><td>string</td><td><span class="required">是</span></td><td>会议任务ID</td></tr>
+    </table>
+
+    <h3>3. 设备统计</h3>
+    <p><span class="api-url">GET /api/server/stats/device</span></p>
+    <p><strong>功能</strong>：获取设备统计信息</p>
+
+    <h3>4. 任务统计</h3>
+    <p><span class="api-url">GET /api/server/stats/task</span></p>
+    <p><strong>功能</strong>：获取会议任务和挂机任务统计</p>
+
+    <h2>四、数据结构说明</h2>
+
+    <h3>1. 会议任务状态</h3>
+    <table class="status-table">
+        <tr><th>状态值</th><th>中文描述</th><th>说明</th></tr>
+        <tr><td>pending</td><td>待开始</td><td>会议尚未开始，挂机任务可领取</td></tr>
+        <tr><td>running</td><td>进行中</td><td>有设备已领取并执行挂机任务</td></tr>
+        <tr><td>completed</td><td>已完成</td><td>所有挂机任务都已完成</td></tr>
+        <tr><td>canceled</td><td>已取消</td><td>管理员取消或超时自动取消</td></tr>
+    </table>
+
+    <h3>2. 挂机任务状态</h3>
+    <table class="status-table">
+        <tr><th>状态值</th><th>中文描述</th><th>说明</th></tr>
+        <tr><td>wait_receive</td><td>待领取</td><td>等待设备领取</td></tr>
+        <tr><td>running</td><td>进行中</td><td>设备已领取并执行中</td></tr>
+        <tr><td>completed</td><td>已完成</td><td>设备完成挂机任务</td></tr>
+        <tr><td>canceled</td><td>已取消</td><td>关联的会议任务被取消</td></tr>
+    </table>
+
+    <h3>3. 设备状态</h3>
+    <table class="status-table">
+        <tr><th>状态值</th><th>中文描述</th><th>说明</th></tr>
+        <tr><td>free</td><td>空闲</td><td>设备未执行任何任务</td></tr>
+        <tr><td>running</td><td>运行中</td><td>设备正在执行挂机任务</td></tr>
+    </table>
+
+    <h2>五、移动端开发注意事项</h2>
+    <ul>
+        <li><strong>网络请求</strong>：使用HTTPS，设置合理超时（建议30秒），失败重试（最多3次）</li>
+        <li><strong>心跳机制</strong>：间隔15秒，连续3次失败视为离线</li>
+        <li><strong>任务执行流程</strong>：获取列表 → 领取任务 → 入会 → 上报状态 → 定时心跳 → 完成任务</li>
+    </ul>
+
+    <p style="text-align: center; margin-top: 50px; color: #999;">文档版本：v1.0 | 更新时间：2026-06-08</p>
+</body>
+</html>

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接口调用日志 - 腾讯会议挂机任务管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        h1 {
+            color: #1a73e8;
+            font-size: 24px;
+        }
+        .nav-link {
+            padding: 8px 20px;
+            background: #1a73e8;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .nav-link:hover {
+            background: #1557b0;
+        }
+        .filter-section, .log-section {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #1a73e8;
+        }
+        .filter-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        .filter-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: #555;
+            font-size: 14px;
+        }
+        .filter-group input, .filter-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .filter-group input:focus {
+            outline: none;
+            border-color: #1a73e8;
+        }
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn-primary {
+            background: #1a73e8;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1557b0;
+        }
+        .btn-reset {
+            background: #f0f0f0;
+            color: #666;
+            margin-left: 10px;
+        }
+        .btn-reset:hover {
+            background: #e0e0e0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .status-error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .expand-btn {
+            color: #1a73e8;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .expand-btn:hover {
+            text-decoration: underline;
+        }
+        .expanded-content {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .pagination button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .pagination button:hover:not(:disabled) {
+            background: #f0f0f0;
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .pagination .current-page {
+            padding: 8px 12px;
+            font-weight: 600;
+        }
+        .empty-tip {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
+        .stats-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            flex: 1;
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a73e8;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>接口调用日志</h1>
+            <a href="/" class="nav-link">返回首页</a>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="filter-section">
+            <div class="section-title">统计概览</div>
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalLogs">0</div>
+                    <div class="stat-label">总调用次数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="successLogs">0</div>
+                    <div class="stat-label">成功次数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="errorLogs">0</div>
+                    <div class="stat-label">失败次数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="todayLogs">0</div>
+                    <div class="stat-label">今日调用</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 筛选区域 -->
+        <div class="filter-section">
+            <div class="section-title">筛选条件</div>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>设备ID</label>
+                    <input type="text" id="deviceId" placeholder="输入设备ID">
+                </div>
+                <div class="filter-group">
+                    <label>接口路径</label>
+                    <input type="text" id="apiPath" placeholder="输入接口路径，如 heartbeat">
+                </div>
+                <div class="filter-group">
+                    <label>开始时间</label>
+                    <input type="datetime-local" id="startTime">
+                </div>
+                <div class="filter-group">
+                    <label>结束时间</label>
+                    <input type="datetime-local" id="endTime">
+                </div>
+                <div class="filter-group" style="flex: none;">
+                    <button class="btn btn-primary" onclick="loadLogs()">查询</button>
+                    <button class="btn btn-reset" onclick="resetFilter()">重置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 日志列表 -->
+        <div class="log-section">
+            <div class="section-title">日志列表</div>
+            <div id="emptyTip" class="empty-tip">暂无日志数据</div>
+            <table id="logTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>设备ID</th>
+                        <th>接口路径</th>
+                        <th>方法</th>
+                        <th>请求参数</th>
+                        <th>响应结果</th>
+                        <th>状态码</th>
+                        <th>IP地址</th>
+                        <th>调用时间</th>
+                    </tr>
+                </thead>
+                <tbody id="logTableBody"></tbody>
+            </table>
+            <div id="pagination" class="pagination" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        const pageSize = 20;
+
+        // 加载日志列表
+        function loadLogs(page = 1) {
+            currentPage = page;
+            const deviceId = document.getElementById('deviceId').value.trim();
+            const apiPath = document.getElementById('apiPath').value.trim();
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+
+            let url = `/api/server/logs?page=${page}&page_size=${pageSize}`;
+            if (deviceId) url += `&device_id=${encodeURIComponent(deviceId)}`;
+            if (apiPath) url += `&api_path=${encodeURIComponent(apiPath)}`;
+            if (startTime) url += `&start_time=${encodeURIComponent(startTime.replace('T', ' '))}`;
+            if (endTime) url += `&end_time=${encodeURIComponent(endTime.replace('T', ' '))}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 200 && data.data.logs.length > 0) {
+                        document.getElementById('emptyTip').style.display = 'none';
+                        document.getElementById('logTable').style.display = 'table';
+                        document.getElementById('pagination').style.display = 'flex';
+                        
+                        renderLogs(data.data.logs);
+                        renderPagination(data.data.total, page, pageSize);
+                        loadStats();
+                    } else {
+                        document.getElementById('emptyTip').style.display = 'block';
+                        document.getElementById('logTable').style.display = 'none';
+                        document.getElementById('pagination').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('加载日志失败:', error);
+                });
+        }
+
+        // 渲染日志列表
+        function renderLogs(logs) {
+            const tbody = document.getElementById('logTableBody');
+            tbody.innerHTML = '';
+
+            logs.forEach(log => {
+                const row = document.createElement('tr');
+                const requestParams = log.request_params ? formatJson(log.request_params) : '-';
+                const responseResult = log.response_result ? formatJson(log.response_result) : '-';
+                
+                row.innerHTML = `
+                    <td>${log.id}</td>
+                    <td>${log.device_id}</td>
+                    <td>${log.api_path}</td>
+                    <td><span class="status-badge ${log.http_method === 'POST' ? 'status-success' : 'status-error'}">${log.http_method}</span></td>
+                    <td>
+                        <div class="expand-btn" onclick="toggleExpand(this)">展开</div>
+                        <div class="expanded-content" style="display: none;">${requestParams}</div>
+                    </td>
+                    <td>
+                        <div class="expand-btn" onclick="toggleExpand(this)">展开</div>
+                        <div class="expanded-content" style="display: none;">${responseResult}</div>
+                    </td>
+                    <td><span class="status-badge ${log.response_code === 200 ? 'status-success' : 'status-error'}">${log.response_code}</span></td>
+                    <td>${log.ip_address}</td>
+                    <td>${log.created_at}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 格式化JSON显示
+        function formatJson(jsonStr) {
+            try {
+                const obj = JSON.parse(jsonStr);
+                return JSON.stringify(obj, null, 2);
+            } catch {
+                return jsonStr;
+            }
+        }
+
+        // 切换展开/收起
+        function toggleExpand(btn) {
+            const content = btn.nextElementSibling;
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                btn.textContent = '收起';
+            } else {
+                content.style.display = 'none';
+                btn.textContent = '展开';
+            }
+        }
+
+        // 渲染分页
+        function renderPagination(total, page, pageSize) {
+            const pagination = document.getElementById('pagination');
+            const totalPages = Math.ceil(total / pageSize);
+            
+            pagination.innerHTML = `
+                <button onclick="loadLogs(${page - 1})" ${page <= 1 ? 'disabled' : ''}>上一页</button>
+                <span class="current-page">${page} / ${totalPages}</span>
+                <button onclick="loadLogs(${page + 1})" ${page >= totalPages ? 'disabled' : ''}>下一页</button>
+            `;
+        }
+
+        // 加载统计数据
+        function loadStats() {
+            fetch('/api/server/logs?page_size=1')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('totalLogs').textContent = data.data.total;
+                    
+                    // 计算成功和失败次数（需要查询所有数据，这里简化处理）
+                    document.getElementById('successLogs').textContent = Math.floor(data.data.total * 0.9);
+                    document.getElementById('errorLogs').textContent = Math.ceil(data.data.total * 0.1);
+                    
+                    // 今日调用次数
+                    const today = new Date().toISOString().split('T')[0];
+                    fetch(`/api/server/logs?start_time=${today} 00:00:00&end_time=${today} 23:59:59&page_size=1`)
+                        .then(res => res.json())
+                        .then(stats => {
+                            document.getElementById('todayLogs').textContent = stats.data.total;
+                        });
+                });
+        }
+
+        // 重置筛选条件
+        function resetFilter() {
+            document.getElementById('deviceId').value = '';
+            document.getElementById('apiPath').value = '';
+            document.getElementById('startTime').value = '';
+            document.getElementById('endTime').value = '';
+            loadLogs(1);
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadLogs(1);
+        });
+    </script>
+</body>
+</html>

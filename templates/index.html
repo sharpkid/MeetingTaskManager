@@ -16,7 +16,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
         h1 {
@@ -25,7 +25,7 @@
             margin-bottom: 30px;
             font-size: 28px;
         }
-        .form-section, .list-section {
+        .form-section, .list-section, .stats-section {
             background: white;
             border-radius: 8px;
             padding: 24px;
@@ -42,6 +42,13 @@
         }
         .form-group {
             margin-bottom: 16px;
+            display: inline-block;
+            width: 48%;
+            margin-right: 2%;
+            vertical-align: top;
+        }
+        .form-group.full-width {
+            width: 100%;
         }
         .form-group label {
             display: block;
@@ -49,7 +56,7 @@
             margin-bottom: 6px;
             color: #555;
         }
-        .form-group input {
+        .form-group input, .form-group textarea {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid #ddd;
@@ -57,7 +64,11 @@
             font-size: 14px;
             transition: border-color 0.3s;
         }
-        .form-group input:focus {
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .form-group input:focus, .form-group textarea:focus {
             outline: none;
             border-color: #1a73e8;
         }
@@ -85,13 +96,13 @@
         .btn-refresh:hover {
             background-color: #555;
         }
-        .btn-delete {
+        .btn-cancel {
             background-color: #dc3545;
             color: white;
             padding: 6px 12px;
             font-size: 12px;
         }
-        .btn-delete:hover {
+        .btn-cancel:hover {
             background-color: #c82333;
         }
         .table-wrapper {
@@ -121,17 +132,25 @@
             font-size: 12px;
             font-weight: 500;
         }
-        .status-pending {
+        .status-wait_receive {
             background-color: #fff3cd;
             color: #856404;
         }
-        .status-in_progress {
+        .status-running {
             background-color: #d4edda;
             color: #155724;
         }
-        .status-ended {
+        .status-completed {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .status-recycled {
             background-color: #f8d7da;
             color: #721c24;
+        }
+        .status-canceled {
+            background-color: #e2e3e5;
+            color: #6c757d;
         }
         .message {
             margin-top: 15px;
@@ -159,39 +178,132 @@
             color: #999;
             padding: 40px;
         }
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            padding: 20px;
+            color: white;
+            text-align: center;
+        }
+        .stat-card:nth-child(2) {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .stat-card:nth-child(3) {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .stat-card:nth-child(4) {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .stats-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>腾讯会议挂机任务管理系统</h1>
         
+        <!-- 统计信息 -->
+        <div class="stats-section">
+            <div class="section-title">数据统计</div>
+            <div class="stats-container">
+                <div class="stats-cards" id="deviceStats">
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">总注册设备</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">在线设备</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">空闲设备</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">挂机中设备</div>
+                    </div>
+                </div>
+                <div class="stats-cards" id="taskStats">
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">总会议数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">进行中</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">已完成</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">已取消</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 发布任务表单 -->
         <div class="form-section">
             <div class="section-title">发布挂机任务</div>
             <form id="taskForm">
                 <div class="form-group">
-                    <label for="meeting_id">腾讯会议号</label>
-                    <input type="text" id="meeting_id" name="meeting_id" placeholder="请输入腾讯会议号（支持数字、字母组合）" required>
+                    <label for="meeting_code">腾讯会议号 *</label>
+                    <input type="text" id="meeting_code" name="meeting_code" placeholder="请输入腾讯会议号" required>
                 </div>
                 <div class="form-group">
-                    <label for="start_time">会议开始时间</label>
+                    <label for="meeting_pwd">会议密码</label>
+                    <input type="text" id="meeting_pwd" name="meeting_pwd" placeholder="无密码则留空">
+                </div>
+                <div class="form-group">
+                    <label for="start_time">开始时间 *</label>
                     <input type="datetime-local" id="start_time" name="start_time" required>
                 </div>
                 <div class="form-group">
-                    <label for="end_time">会议结束时间</label>
+                    <label for="end_time">结束时间 *</label>
                     <input type="datetime-local" id="end_time" name="end_time" required>
                 </div>
                 <div class="form-group">
-                    <label for="max_participants">挂机人数上限</label>
-                    <input type="number" id="max_participants" name="max_participants" min="1" placeholder="请输入挂机人数上限" required>
+                    <label for="need_num">需要挂机人数 *</label>
+                    <input type="number" id="need_num" name="need_num" min="1" placeholder="请输入人数" required>
+                </div>
+                <div class="form-group">
+                    <label for="priority">任务优先级</label>
+                    <input type="number" id="priority" name="priority" min="1" value="1" placeholder="数字越大优先级越高">
+                </div>
+                <div class="form-group full-width">
+                    <label for="remark">任务备注</label>
+                    <textarea id="remark" name="remark" placeholder="可选，填写任务备注信息"></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary">发布任务</button>
+                <button type="button" class="btn btn-refresh" onclick="resetForm()">重置表单</button>
             </form>
             <div id="formMessage" class="message"></div>
         </div>
         
+        <!-- 任务列表 -->
         <div class="list-section">
             <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>有效任务列表</span>
+                <span>任务列表</span>
                 <button class="btn btn-refresh" onclick="loadTasks()">刷新列表</button>
             </div>
             <div class="table-wrapper">
@@ -199,13 +311,16 @@
                     <thead>
                         <tr>
                             <th>任务ID</th>
-                            <th>腾讯会议号</th>
+                            <th>会议号</th>
+                            <th>会议密码</th>
                             <th>开始时间</th>
                             <th>结束时间</th>
-                            <th>总挂机人数</th>
-                            <th>当前已挂机</th>
-                            <th>剩余名额</th>
-                            <th>任务状态</th>
+                            <th>总人数</th>
+                            <th>进行中</th>
+                            <th>待领取</th>
+                            <th>优先级</th>
+                            <th>状态</th>
+                            <th>挂机任务状态</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -213,17 +328,51 @@
                     </tbody>
                 </table>
             </div>
-            <div id="emptyTip" class="empty-tip" style="display: none;">暂无有效任务</div>
+            <div id="emptyTip" class="empty-tip" style="display: none;">暂无任务</div>
         </div>
     </div>
 
     <script>
+        // 格式化时间（支持时间戳和日期字符串）
+        function formatTimestamp(ts) {
+            if (!ts) return '--';
+            try {
+                // 如果是时间戳（纯数字）
+                if (/^\d+$/.test(ts)) {
+                    const date = new Date(parseInt(ts) * 1000);
+                    return date.toLocaleString('zh-CN');
+                }
+                // 如果是日期字符串
+                const date = new Date(ts.replace(/-/g, '/'));
+                if (isNaN(date.getTime())) {
+                    return ts;
+                }
+                return date.toLocaleString('zh-CN');
+            } catch {
+                return ts;
+            }
+        }
+
+        // 提交表单
         document.getElementById('taskForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
             const formData = new FormData(this);
             
-            fetch('/api/create_task', {
+            // 将datetime-local转换为时间戳
+            const startInput = document.getElementById('start_time');
+            const endInput = document.getElementById('end_time');
+            
+            if (startInput.value) {
+                const startTs = Math.floor(new Date(startInput.value).getTime() / 1000);
+                formData.set('start_time', startTs.toString());
+            }
+            if (endInput.value) {
+                const endTs = Math.floor(new Date(endInput.value).getTime() / 1000);
+                formData.set('end_time', endTs.toString());
+            }
+            
+            fetch('/api/server/task/publish', {
                 method: 'POST',
                 body: formData
             })
@@ -235,6 +384,7 @@
                     messageEl.textContent = data.msg;
                     this.reset();
                     loadTasks();
+                    loadStats();
                 } else {
                     messageEl.className = 'message error';
                     messageEl.textContent = data.msg;
@@ -250,6 +400,12 @@
             });
         });
 
+        // 重置表单
+        function resetForm() {
+            document.getElementById('taskForm').reset();
+        }
+
+        // 加载任务列表
         function loadTasks() {
             fetch('/api/get_tasks')
             .then(response => response.json())
@@ -264,15 +420,24 @@
                     data.data.forEach(task => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
-                            <td>${task.task_id.substring(0, 8)}...</td>
-                            <td>${task.meeting_id}</td>
-                            <td>${task.start_time_display}</td>
-                            <td>${task.end_time_display}</td>
-                            <td>${task.max_participants}</td>
-                            <td>${task.current_participants}</td>
-                            <td class="remaining">${task.remaining}</td>
+                            <td>${task.meeting_task_id.substring(0, 8)}...</td>
+                            <td>${task.meeting_code}</td>
+                            <td>${task.meeting_pwd || '-'}</td>
+                            <td>${formatTimestamp(task.start_time)}</td>
+                            <td>${formatTimestamp(task.end_time)}</td>
+                            <td>${task.need_num}</td>
+                            <td>${task.running}</td>
+                            <td class="remaining">${task.wait_receive}</td>
+                            <td>${task.priority || 1}</td>
                             <td><span class="status status-${task.status}">${getStatusText(task.status)}</span></td>
-                            <td><button class="btn btn-delete" onclick="deleteTask('${task.task_id}')">删除</button></td>
+                            <td>
+                                <div class="task-status-detail">
+                                    <div>待领取: ${task.wait_receive}</div>
+                                    <div>进行中: ${task.running}</div>
+                                    <div>已完成: ${task.completed}</div>
+                                </div>
+                            </td>
+                            <td><button class="btn btn-cancel" onclick="cancelTask('${task.meeting_task_id}')">取消任务</button></td>
                         `;
                         tbody.appendChild(row);
                     });
@@ -283,8 +448,14 @@
             });
         }
 
+        // 获取状态中文描述
         function getStatusText(status) {
             const statusMap = {
+                'wait_receive': '待领取',
+                'running': '进行中',
+                'completed': '已完成',
+                'recycled': '异常回收',
+                'canceled': '已取消',
                 'pending': '待开始',
                 'in_progress': '进行中',
                 'ended': '已结束'
@@ -292,35 +463,74 @@
             return statusMap[status] || status;
         }
 
-        function deleteTask(taskId) {
-            if (!confirm('确定要删除此任务吗？')) {
+        // 取消任务
+        function cancelTask(meetingTaskId) {
+            if (!confirm('确定要取消此会议任务吗？所有关联的挂机任务将被取消，已领取设备将被释放。')) {
                 return;
             }
             
             const formData = new FormData();
-            formData.append('taskId', taskId);
+            formData.append('meeting_task_id', meetingTaskId);
             
-            fetch('/api/delete_task', {
+            fetch('/api/server/task/cancel', {
                 method: 'POST',
                 body: formData
             })
             .then(response => response.json())
             .then(data => {
                 if (data.code === 200) {
-                    alert('删除成功');
+                    alert('会议任务已取消');
                     loadTasks();
+                    loadStats();
                 } else {
-                    alert('删除失败: ' + data.msg);
+                    alert('取消失败: ' + data.msg);
                 }
             })
             .catch(error => {
-                alert('删除失败，请重试');
+                alert('取消失败，请重试');
             });
         }
 
+        // 加载统计数据
+        function loadStats() {
+            // 设备统计
+            fetch('/api/server/stats/device')
+            .then(response => response.json())
+            .then(data => {
+                if (data.code === 200) {
+                    const stats = data.data;
+                    const deviceStats = document.querySelectorAll('#deviceStats .stat-value');
+                    deviceStats[0].textContent = stats.total_device || 0;
+                    deviceStats[1].textContent = stats.online_device || 0;
+                    deviceStats[2].textContent = stats.free_device || 0;
+                    deviceStats[3].textContent = stats.running_device || 0;
+                }
+            });
+            
+            // 任务统计
+            fetch('/api/server/stats/task')
+            .then(response => response.json())
+            .then(data => {
+                if (data.code === 200) {
+                    const stats = data.data;
+                    const taskStats = document.querySelectorAll('#taskStats .stat-value');
+                    taskStats[0].textContent = stats.total_meeting || 0;
+                    taskStats[1].textContent = stats.running_meeting || 0;
+                    taskStats[2].textContent = stats.completed_meeting || 0;
+                    taskStats[3].textContent = stats.canceled_meeting || 0;
+                }
+            });
+        }
+
+        // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
             loadTasks();
-            setInterval(loadTasks, 5000);
+            loadStats();
+            // 每5秒刷新一次
+            setInterval(() => {
+                loadTasks();
+                loadStats();
+            }, 5000);
         });
     </script>
 </body>
